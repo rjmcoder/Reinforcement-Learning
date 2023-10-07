@@ -94,7 +94,7 @@ def compute_next_q_value(old_q_value, reward, next_optimal_q_value):
 
 
 ####### Visualization ################
-log_interval = 500
+log_interval = 50
 render_interval = 30000
 
 fig = plt.figure()
@@ -151,6 +151,7 @@ for epoch in range(EPOCHS):
         ax.plot(epochs, mean_points_log, label=f"Running Mean: {running_mean}")
         plt.legend()
         fig.canvas.draw()
+        plt.show()
 
 env.close()
 

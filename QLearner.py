@@ -23,49 +23,63 @@ class QLearner:
         self.max_rar = max_rar
         self.radr = radr
 
-        self.num_states = len(self.states)
-        self.num_actions = len(self.actions)
-        self.Q = np.zeros([self.num_states, self.num_actions])
+        # self.num_states = len(self.states)
+        # self.num_actions = len(self.actions)
+        self.Q = np.zeros([self.states, self.actions])
 
 
-    def query_initial_state(self, state):
+    def get_next_action_without_Q_table_update(self, state):
         self.s = state
 
         random_number = np.random.random()
 
         # exploitation
         if random_number > self.rar:
-            a = np.argmax(self.Q[state])
+            action = np.argmax(self.Q[state])
 
         # exploration
         else:
-            a = np.random.randint(0, self.num_actions - 1)
+            action = np.random.randint(0, self.actions - 1)
 
-        action = self.actions[a]
         self.a = action
 
         return action
 
+    def get_next_action_with_Q_table_update(self, new_state, reward):
 
-    def get_next_action(self, state):
+        last_state = self.s
+        last_action = self.a
+
+        self.update_Q(last_state, last_action, new_state, reward)
+
+        self.s = new_state
+        self.a = self.get_action(new_state)
+
+        # if debug:
+        #     print(f"last state: {last_state} --> last action: {last_action} --> new state: {new_state}, reward: {reward}")
+        #
+        # if self.verbose:
+        #     print(f"s = {s_prime}, a = {self.a}, r={r}")
+        return self.a
+
+    def get_action(self, state):
 
         random_number = np.random.random()
 
         # exploitation
         if random_number > self.rar:
-            a = np.argmax(self.Q[state])
+            action = np.argmax(self.Q[state])
 
         # exploration
         else:
-            a = np.random.randint(0, self.num_actions-1)
-
-        action = self.actions[a]
+            action = np.random.randint(0, self.actions-1)
 
         return action
 
 
     def decay_rar(self, epoch):
-        return self.min_rar + (self.max_rar - self.min_rar) * np.exp(-radr * epoch)
+        # exponential decay of rar
+        return self.min_rar + (self.max_rar - self.min_rar) * np.exp(-self.radr * epoch)
 
 
     def update_Q(self, last_state, last_action, new_state, reward):
@@ -73,11 +87,8 @@ class QLearner:
         old_q_value = self.Q[last_state, last_action]
         next_optimal_q_value = np.max(self.Q[new_state, :])
 
-        return old_q_value + self.lr * (reward + self.dr * next_optimal_q_value - old_q_value)
+        self.Q[last_state, last_action] = old_q_value + self.lr * (reward + self.dr * next_optimal_q_value - old_q_value)
 
-
-    def query(self, new_state, last_action_reward):
-        pass
 
 
 

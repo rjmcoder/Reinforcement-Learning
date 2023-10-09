@@ -57,7 +57,7 @@ def train(env):
         episode += 1
 
         # decay the random action rate
-        learner.rar = learner.decay_rar(learner.rar)
+        learner.decay_rar(episode)
 
         rewards.append(total_rewards)
 
@@ -105,5 +105,6 @@ if __name__ == "__main__":
     EPOCHS = 10000  # episodes, how many times the agents plays the game until it hits done
     q_table = train(env)
 
+    env.reset()
     # check the performance
     check_performance_after_training(q_table, env)

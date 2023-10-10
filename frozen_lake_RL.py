@@ -28,7 +28,8 @@ def train(env):
     log_interval = 1000
 
     learner = ql.QLearner(states=env.observation_space.n,
-                          actions=env.action_space.n)
+                          actions=env.action_space.n,
+                          radr=0.001)
 
 
     for episode in range(EPOCHS):
@@ -69,12 +70,15 @@ def train(env):
 
 
 # lets see how the agent is performing after training
-def check_performance_after_training(q_table, env):
+def check_performance(env, use_q_table=False, q_table=None):
     state = env.reset()[0]
 
     for steps in range(100):
         print(env.render())
-        action = np.argmax(q_table[state, :])
+        if use_q_table == True:
+            action = np.argmax(q_table[state, :])
+        else:
+            action = env.action_space.sample()
         state, reward, done, trunc, info = env.step(action)
         time.sleep(0.5)
         os.system('cls')
@@ -93,18 +97,29 @@ if __name__ == "__main__":
                    is_slippery=False,
                    render_mode='ansi',
                    max_episode_steps=1000)   # max actions to take before stopping the game
-    # help(env)
-    # print(env.spec.max_episode_steps)
+
 
     # create a default environment
     # env = gym.make('FrozenLake-v1', desc=None, map_name='8x8', is_slippery=False, render_mode='ansi')
 
-    env.reset()
+    training = True
+    testing = True
 
-    # run the training
-    EPOCHS = 10000  # episodes, how many times the agents plays the game until it hits done
-    q_table = train(env)
+    if training == True:
+        # env.reset()
+        EPOCHS = 10000  # episodes, how many times the agents plays the game until it hits done
+        q_table = train(env)
+        np.save('C:\\Users\\riteshm\omscs\\vip\\RL\\frozen_lake_q_table.npy', q_table)
 
-    env.reset()
-    # check the performance
-    check_performance_after_training(q_table, env)
+    if testing == True:
+        print("====== using random actions... ")
+        time.sleep(2)
+        env.reset()
+        check_performance(env, use_q_table=False)
+
+        time.sleep(2)
+        print("====== using Q-table actions... ")
+        time.sleep(2)
+        # env.reset()
+        q_table = np.load('C:\\Users\\riteshm\omscs\\vip\\RL\\frozen_lake_q_table.npy')
+        check_performance(env, use_q_table=True, q_table=q_table)

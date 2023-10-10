@@ -24,17 +24,11 @@ def create_bins(num_bins_per_obs=10):
 
     return bins
 
-def reduce_epsilon(epsilon, epoch):
-    if BURN_IN <= epoch <= EPSILON_END:
-        epsilon -= EPSILON_REDUCE
-
-    return epsilon
-
 
 # this function is really flexible where you can adjust how agent is rewarded/punished
 def fail(done, points, reward):
-    if done and points < 150:
-        reward = -200
+    if done and points < 500:
+        reward = -600
 
     return reward
 
@@ -45,15 +39,11 @@ def discretize_observation(observations, bins):
 
     for i, observation in enumerate(observations):
         discretized_observation = np.digitize(observation, bins[i])  # cool function to find which bin a value lies in given an array of bins
+        discretized_observation = min(bins.shape[1]-1, discretized_observation)
 
         binned_observations.append(discretized_observation)
 
     return tuple(binned_observations)
-
-
-# # # of bins for cart_position, # of bins of cart_velocity, # of bins for pole angle, # of bins for pole angular velocity
-# q_table_shape = (NUM_BINS, NUM_BINS, NUM_BINS, NUM_BINS, env.action_space.n)
-# q_table = np.zeros(q_table_shape)
 
 
 ####### Visualization ################
@@ -79,8 +69,9 @@ def train(env):
 
     # # of bins for cart_position, # of bins of cart_velocity, # of bins for pole angle, # of bins for pole angular velocity
     learner = ql.QLearner(states=(NUM_BINS, NUM_BINS, NUM_BINS, NUM_BINS),
-                          actions=env.action_space.n)
-
+                          actions=env.action_space.n,
+                          alpha=0.1,
+                          gamma=0.995)
 
     for epoch in range(EPOCHS):
 
@@ -100,13 +91,14 @@ def train(env):
             # state, reward... env.step()
             new_state, reward, done, trunc, info = env.step(action)
 
-            #discretize the state
+            # discretize the state
             discretized_state = discretize_observation(new_state, BINS)
 
             # custom reward
             reward = fail(done, points, reward)
 
             # get next action
+            # print(f"last action: {action}, new state: {new_state}, new discretized state: {discretized_state}")
             action = learner.get_next_action_with_Q_table_update(discretized_state, reward)
             # print(action)
 
@@ -137,22 +129,25 @@ def train(env):
     return learner.Q
 
 # lets see how the agent is performing after training
-def check_performance_after_training(q_table, env):
+def check_performance(env, use_qable=True, q_table=None):
 
     total_reward = 0
-
+    done = False
     state = env.reset()[0]
 
-    for steps in range(1000):
+    for steps in range(500):
         env.render()
-        discrete_state = discretize_observation(state, BINS)  # get bins
-        action = np.argmax(q_table[discrete_state])  # and chose action from the Q-Table
+        if use_qable == True:
+            discrete_state = discretize_observation(state, BINS)  # get bins
+            action = np.argmax(q_table[discrete_state])  # and chose action from the Q-Table
+        else:
+            action = env.action_space.sample()
         state, reward, done, trunc, info = env.step(action)  # Finally perform the action
         total_reward += 1
         if done:
-            print(f"You got {total_reward} points!")
             break
 
+    print(f"You got {total_reward} points!")
     env.close()
 
 # points_log = []
@@ -207,38 +202,39 @@ def check_performance_after_training(q_table, env):
 # env.close()
 
 if __name__ == "__main__":
-    # try_environment()
 
-    # create the environment
-    env = gym.make("CartPole-v1", render_mode="rgb_array")  # ["human", "rgb_array"]
-    env.reset()
-    # help(env)
-    # print(env.spec.max_episode_steps)
-
-    NUM_BINS = 10
+    NUM_BINS = 50
     BINS = create_bins(NUM_BINS)
 
-    training = True
+    training = False
     testing = True
 
     if training == True:
-        ALPHA = 0.8
-        GAMMA = 0.9
-        epsilon = 1
-        BURN_IN = 1
-        EPSILON_END = 10000
-        EPSILON_REDUCE = 0.0001
+
+        # create the environment
+        env = gym.make("CartPole-v1", render_mode="rgb_array")  # ["human", "rgb_array"]
+        env.reset()
 
         # run the training
-        EPOCHS = 30000  # episodes, how many times the agents plays the game until it hits done
+        EPOCHS = 50000  # episodes, how many times the agents plays the game until it hits done
         q_table = train(env)
-        np.save('q_table.npy', q_table)
+
+        np.save('C:\\Users\\riteshm\omscs\\vip\\RL\\cartpole_q_table.npy', q_table)
 
     if testing == True:
-        q_table = np.load('q_table.npy')
+
+        print("====== using random actions... ")
         env = gym.make("CartPole-v1", render_mode="human")
-        # check the performance
-        check_performance_after_training(q_table, env)
+        env.reset()
+        check_performance(env, use_qable=False)
+
+        time.sleep(2)
+
+        print("====== using Q-table actions... ")
+        env = gym.make("CartPole-v1", render_mode="human")
+        env.reset()
+        q_table = np.load('C:\\Users\\riteshm\omscs\\vip\\RL\\cartpole_q_table.npy')
+        check_performance(env, use_qable=True, q_table=q_table)
 
 
 
